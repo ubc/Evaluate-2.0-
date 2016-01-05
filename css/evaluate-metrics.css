@@ -1,0 +1,16 @@
+
+.metric-vote {
+	cursor: pointer;
+}
+
+.metric-vote:not(.active) {
+	color: #777;
+}
+
+.metric-vote.active {
+	color: #333;
+}
+
+.metric-vote.active .metric-vote {
+	color: inherit;
+}
