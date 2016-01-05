@@ -47,7 +47,7 @@ class Evaluate_Metric_One_Way {
 		return $score;
 	}
 
-	public static function render_options( $options ) {
+	public static function render_options( $options, $name = 'options[%s]' ) {
 		$options = shortcode_atts( array(
 			'icon' => 'thumbs',
 			'text' => "",
@@ -56,7 +56,7 @@ class Evaluate_Metric_One_Way {
 		?>
 		<dt>Icon</dt>
 		<dd>
-			<select name="options[icon]">
+			<select name="<?php printf( $name, 'icon' ); ?>">
 				<?php
 				$icons = array(
 					'thumbs'    => "Thumb",
@@ -78,7 +78,7 @@ class Evaluate_Metric_One_Way {
 			</select>
 		</dd>
 		<dt>Text</dt>
-		<dd><input type="text" name="options[text]" value="<?php echo $options['text']; ?>"></input></dd>
+		<dd><input type="text" name="<?php printf( $name, 'text' ); ?>" value="<?php echo $options['text']; ?>"></input></dd>
 		<?php
 	}
 

@@ -89,19 +89,21 @@ class Evaluate_Metric_Range {
 		return round( ( ( $constant * $prior ) + ( $average * $total ) ) / ( $constant + $total ), 5 );
 	}
 
-	public static function render_options( $options ) {
+	public static function render_options( $options, $name = 'options[%s]' ) {
 		$options = shortcode_atts( array(
 			'icon' => 'stars',
 			'max' => 5,
 		), $options );
 
 		?>
-		<dt>Icon</dt>
+		<dt>Display Method</dt>
 		<dd>
-			<select name="options[icon]">
+			<select name="<?php printf( $name, 'icon' ); ?>">
 				<?php
+				// TODO: Add slider display.
 				$icons = array(
 					'numeric' => "Numeric",
+					//'slider' => "Slider",
 					'stars' => "Stars",
 					'thumbs' => "Thumbs",
 					'hearts' => "Hearts",
@@ -118,8 +120,11 @@ class Evaluate_Metric_Range {
 			</select>
 		</dd>
 		<dt>Maximum Rating</dt>
-		<dd><input type="number" min="2" name="options[max]" value="<?php echo $options['max']; ?>"></input></dd>
+		<dd>
+			<input type="number" min="2" name="<?php printf( $name, 'max' ); ?>" value="<?php echo $options['max']; ?>"></input>
+		</dd>
 		<?php
+		// TODO: Add minimum rating
 	}
 
 }

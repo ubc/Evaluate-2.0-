@@ -36,7 +36,7 @@ class Evaluate_Metric_Table extends WP_List_Table {
 	public function column_default( $item, $column_name ) {
 		switch ( $column_name ) {
 			case 'date':
-				return $item[ $column_name ];
+				return $item[ 'created' ];
 			default:
 				return print_r( $item, true ); //Show the whole array for troubleshooting purposes
 		}

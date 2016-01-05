@@ -90,7 +90,7 @@ class Evaluate_Metric_Two_Way {
 		return $numerator / $denominator;
 	}
 
-	public static function render_options( $options ) {
+	public static function render_options( $options, $name = 'options[%s]' ) {
 		$options = shortcode_atts( array(
 			'icon' => 'arrows',
 			'text_up' => "",
@@ -100,7 +100,7 @@ class Evaluate_Metric_Two_Way {
 		?>
 		<dt>Icon</dt>
 		<dd>
-			<select name="options[icon]">
+			<select name="<?php printf( $name, 'icon' ); ?>">
 				<?php
 				$icons = array(
 					'thumbs' => "Thumbs",
@@ -120,9 +120,9 @@ class Evaluate_Metric_Two_Way {
 		</dd>
 		<dt>Text</dt>
 		<dd>
-			<input type="text" name="options[text_up]" placeholder="Up" value="<?php echo $options['text_up']; ?>"></input>
+			<input type="text" name="<?php printf( $name, 'text_up' ); ?>" placeholder="Up" value="<?php echo $options['text_up']; ?>"></input>
 			<br>
-			<input type="text" name="options[text_down]" placeholder="Down" value="<?php echo $options['text_down']; ?>"></input>
+			<input type="text" name="<?php printf( $name, 'text_down' ); ?>" placeholder="Down" value="<?php echo $options['text_down']; ?>"></input>
 		</dd>
 		<?php
 	}

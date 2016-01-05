@@ -121,7 +121,7 @@ class Evaluate_Manager {
 					<dd><input name="name" value="<?php echo $metric['name']; ?>"></input></dd>
 					<dt><label for="type">Type</label></dt>
 					<dd>
-						<select id="type" name="type">
+						<select id="type" class="nav" data-anchor="options" name="type">
 							<option value=""> - Choose a Type - </option>
 							<?php
 							foreach ( $metric_types as $slug => $metric_type ) {
@@ -140,7 +140,7 @@ class Evaluate_Manager {
 				<?php
 				foreach ( $metric_types as $slug => $metric_type ) {
 					?>
-					<dl id="options-<?php echo $metric_type['slug']; ?>" class="options"<?php echo $metric_type['slug'] == $metric['type'] ? '' : ' style="display: none;"'; ?>>
+					<dl class="options-<?php echo $metric_type['slug']; ?> options"<?php echo $metric_type['slug'] == $metric['type'] ? '' : ' style="display: none;"'; ?>>
 						<?php
 
 						echo $metric_type['options']( $metric['options'] );
@@ -153,8 +153,6 @@ class Evaluate_Manager {
 					<dt>Usage</dt>
 					<dd>
 						<?php
-						
-
 						if ( ! isset( $metric['options']['usage'] ) ) {
 							$usage = array( 'shortcodes' );
 						} else {
@@ -163,12 +161,13 @@ class Evaluate_Manager {
 
 						$cases = array(
 							'shortcodes' => "Available as a shortcode",
-							'comments' => "Visible on Comments",
-							'comments' => "Attached to Comments",
+							'admins_only' => "Only visible to admins",
+							'comments_attached' => "Attached to Comments (i)",
+							'comments' => "Available on Comments",
 						);
 
 						foreach ( get_post_types( array( 'public' => true, ), 'objects' ) as $slug => $object ) {
-							$cases[ $slug ] = "Visible on " . $object->labels->name;
+							$cases[ $slug ] = "Available on " . $object->labels->name;
 						}
 
 						foreach ( $cases as $slug => $text ) {
@@ -195,10 +194,12 @@ class Evaluate_Manager {
 
 		// TODO: Verify nonce.
 
+		$options = apply_filters( 'evaluate_validate_' . $_POST['type'] . '_options', $_POST['options'] );
+
 		$data = array(
 			'name' => sanitize_text_field( $_POST['name'] ),
 			'type' => sanitize_text_field( $_POST['type'] ),
-			'options' => serialize( $_POST['options'] ),
+			'options' => serialize( $options ),
 		);
 
 		if ( empty( $_POST['metric_id'] ) ) {

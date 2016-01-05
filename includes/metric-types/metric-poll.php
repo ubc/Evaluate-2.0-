@@ -92,7 +92,7 @@ class Evaluate_Metric_Poll {
 		return $score;
 	}
 
-	public static function render_options( $options ) {
+	public static function render_options( $options, $name = 'options[%s]' ) {
 		$options = shortcode_atts( array(
 			'question' => "",
 			'answers' => "",
@@ -100,10 +100,10 @@ class Evaluate_Metric_Poll {
 
 		?>
 		<dt>Question</dt>
-		<dd><input type="text" name="options[question]" value="<?php echo $options['question']; ?>"></input></dd>
+		<dd><input type="text" name="<?php printf( $name, 'question' ); ?>" value="<?php echo $options['question']; ?>"></input></dd>
 		<dt>Answers</dt>
 		<dd>
-			<textarea name="options[answers]" value="<?php echo $options['answers']; ?>"></textarea>
+			<textarea name="<?php printf( $name, 'answers' ); ?>"><?php echo $options['answers']; ?></textarea>
 			<br>
 			<small>One answer per line</small>
 		</dd>
