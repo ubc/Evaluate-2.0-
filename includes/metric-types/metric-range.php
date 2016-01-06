@@ -2,15 +2,14 @@
 
 class Evaluate_Metric_Range {
 
+	public const SLUG = 'range';
+
 	public static function init() {
-		Evaluate_Metrics::register_type( array(
-			'title'    => "Range",
-			'slug'     => 'range',
-			'render'   => array( __CLASS__, 'render_metric' ),
-			'validate' => array( __CLASS__, 'validate_vote' ),
-			'score'    => array( __CLASS__, 'adjust_score' ),
-			'options'  => array( __CLASS__, 'render_options' ),
-		) );
+		Evaluate_Metrics::register_type( "Range", self::SLUG );
+		add_action( 'evaluate_render_' . self::SLUG, array( __CLASS__, 'render_metric' ), 10, 3 );
+		add_filter( 'evaluate_validate_vote_' . self::SLUG, array( __CLASS__, 'validate_vote' ), 10, 1 );
+		add_filter( 'evaluate_adjust_score_' . self::SLUG, array( __CLASS__, 'adjust_score' ), 10, 3 );
+		add_action( 'evaluate_render_options_' . self::SLUG, array( __CLASS__, 'render_options' ), 10, 2 );
 	}
 
 	public static function render_metric( $options, $score, $user_vote = null ) {
@@ -40,7 +39,7 @@ class Evaluate_Metric_Range {
 		}
 	}
 
-	public static function validate_vote( $options, $vote ) {
+	public static function validate_vote( $vote, $options ) {
 		if ( $vote <= 0 ) {
 			return $options['icon'] == 'numeric' ? 0 : 1;
 		} else if ( $vote > $options['max'] ) {

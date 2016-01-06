@@ -24,14 +24,12 @@ class Evaluate_Metrics {
 		wp_localize_script( 'evaluate-metrics', 'ajaxurl', admin_url( 'admin-ajax.php' ) );
 	}
 
-	public static function register_type( $attributes ) {
-		$fields = array( 'title', 'slug', 'render', 'options', 'score' );
+	public static function register_type( $title, $slug ) {
+		self::$metric_types[ $slug ] = $title;
+	}
 
-		if ( count( array_intersect( $fields, array_keys( $attributes ) ) ) === count( $fields ) ) {
-			self::$metric_types[ $attributes['slug'] ] = $attributes;
-		} else {
-			error_log( "Problems: " . implode( ", ", array_diff( $fields, $attributes ) ) );
-		}
+	public static function get_metric_types() {
+		return self::$metric_types;
 	}
 
 	public static function render_metrics( $content, $context = null ) {
@@ -71,7 +69,7 @@ class Evaluate_Metrics {
 
 					$score = Evaluate_Voting::get_score( $metric['metric_id'], $context_id );
 					$user_vote = Evaluate_Voting::get_vote( $metric['metric_id'], $context_id, $user_id );
-					call_user_func( self::$metric_types[ $metric['type'] ]['render'], $metric['options'], $score, $user_vote );
+					do_action( 'evaluate_render_metric_' . $metric['type'], $metric['options'], $score, $user_vote );
 					?>
 				</span>
 				<?php
@@ -80,15 +78,6 @@ class Evaluate_Metrics {
 		}
 
 		return $content;
-	}
-
-	public static function get_type( $slug ) {
-		return self::$metric_types[ $slug ];
-	}
-
-	// TODO: Remove one of these two functions
-	public static function get_metric_types() {
-		return self::$metric_types;
 	}
 
 	public static function get_metrics( $ids = array(), $per_page = 5, $page_number = 1 ) {

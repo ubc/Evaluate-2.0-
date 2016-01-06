@@ -2,20 +2,17 @@
 
 class Evaluate_Metric_Rubric {
 
+	public const SLUG = 'rubric';
+
 	public static function init() {
 		require_once( Evaluate::$directory_path . 'includes/rubrics.php' );
 
-		Evaluate_Metrics::register_type( array(
-			'title'   => "Rubric",
-			'slug'    => 'rubric',
-			'render'   => array( __CLASS__, 'render_metric' ),
-			'validate' => array( __CLASS__, 'validate_vote' ),
-			'score'    => array( __CLASS__, 'adjust_score' ),
-			'options'  => array( __CLASS__, 'render_options' ),
-		) );
-
-		// TODO: convert all metric type callbacks to actions/filters, for improved extensibility.
-		//add_filter( 'evaluate_validate_rubric_options', array( __CLASS__, 'validate_options' ) );
+		Evaluate_Metrics::register_type( "Rubric", self::SLUG );
+		add_action( 'evaluate_render_' . self::SLUG, array( __CLASS__, 'render_metric' ), 10, 3 );
+		add_filter( 'evaluate_validate_vote_' . self::SLUG, array( __CLASS__, 'validate_vote' ), 10, 1 );
+		add_filter( 'evaluate_adjust_score_' . self::SLUG, array( __CLASS__, 'adjust_score' ), 10, 3 );
+		add_action( 'evaluate_render_options_' . self::SLUG, array( __CLASS__, 'render_options' ), 10, 2 );
+		//add_filter( 'evaluate_validate_options_' . self::SLUG, array( __CLASS__, 'validate_options' ) );
 	}
 
 	public static function render_metric( $options, $user_vote = null ) {
@@ -30,7 +27,7 @@ class Evaluate_Metric_Rubric {
 				}
 
 				// TODO: Pass user_vote and score
-				call_user_func( Evaluate_Metrics::get_type( $field['type'] )['render'], $field['options'], array(), null );
+				do_action( 'evaluate_render_' . $field['type'], $field['options'], array(), null );
 				?>
 			</span>
 			<?php
@@ -43,7 +40,7 @@ class Evaluate_Metric_Rubric {
 		var_dump( $options );
 	}
 
-	public static function validate_vote( $options, $vote ) {
+	public static function validate_vote( $vote, $options ) {
 		return $vote;
 	}
 
@@ -53,16 +50,16 @@ class Evaluate_Metric_Rubric {
 
 	public static function render_options( $options, $name = 'options[%s]' ) {
 		$options = shortcode_atts( array(
-			'rubric' => "",
+			'rubric' => '',
 			'fields' => array(),
 		), $options );
 
 		$rubrics = apply_filters( 'evaluate_get_rubrics', array() );
 
 		$metric_types = Evaluate_Metrics::get_metric_types();
-		foreach ( $metric_types as $key => $metric_type ) {
-			if ( $metric_type['slug'] === 'rubric' ) {
-				unset( $metric_types[ $key ] );
+		foreach ( $metric_types as $slug => $title ) {
+			if ( $slug === self::SLUG ) {
+				unset( $metric_types[ $slug ] );
 			}
 		}
 
@@ -106,7 +103,7 @@ class Evaluate_Metric_Rubric {
 					<ul>
 						<?php
 						foreach ( $rubric['fields'] as $key => $field ) {
-							echo $field['title'] . " - a " . $metric_types[ $field['type'] ]['title'] . " metric, with " . $field['weight'] . " weight.";
+							echo $field['title'] . " - a " . $metric_types[ $field['type'] ] . " metric, with " . $field['weight'] . " weight.";
 						}
 						?>
 					</ul>
@@ -131,10 +128,10 @@ class Evaluate_Metric_Rubric {
 			<select class="nav rubric-field-type" data-anchor="field-options" data-siblings="true" name="<?php printf( $name, 'type' ); ?>">
 				<option value=""> - Type - </option>
 				<?php
-				foreach ( $metric_types as $key => $metric_type ) {
+				foreach ( $metric_types as $slug => $title ) {
 					?>
-					<option value="<?php echo $metric_type['slug']; ?>" <?php selected( $metric_type['slug'], $field['type'] ); ?>>
-						<?php echo $metric_type['title']; ?>
+					<option value="<?php echo $slug; ?>" <?php selected( $slug, $field['type'] ); ?>>
+						<?php echo $title; ?>
 					</option>
 					<?php
 				}
@@ -143,12 +140,12 @@ class Evaluate_Metric_Rubric {
 			<input name="<?php printf( $name, 'title' ); ?>" type="text" placeholder="Title" value="<?php echo $field['title']; ?>"></input>
 			<input name="<?php printf( $name, 'weight' ); ?>" type="number" placeholder="Weight (1.0)" value="<?php echo $field['weight']; ?>"></input>
 			<?php
-			foreach ( $metric_types as $slug => $metric_type ) {
+			foreach ( $metric_types as $slug => $title ) {
 				?>
-				<dl class="field-options-<?php echo $metric_type['slug']; ?> field-options"<?php echo $metric_type['slug'] == $field['type'] ? '' : ' style="display: none;"'; ?>>
+				<dl class="field-options-<?php echo $slug; ?> field-options"<?php echo $slug == $field['type'] ? '' : ' style="display: none;"'; ?>>
 					<?php
 					$options_name = sprintf( $name, 'options' ) . '[%s]';
-					echo $metric_type['options']( $field['options'], $options_name );
+					do_action( 'evaluate_render_options_' . $field['type'], $field['options'], $options_name );
 					?>
 				</dl>
 				<?php

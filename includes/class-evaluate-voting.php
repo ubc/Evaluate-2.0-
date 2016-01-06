@@ -73,12 +73,9 @@ class Evaluate_Voting {
 		error_log('get_metric');
 		$metric = Evaluate_Metrics::get_metrics( array( $metric_id ) )[0];
 
-		error_log('get_type');
-		$metric_type = Evaluate_Metrics::get_type( $metric['type'] );
-
 		error_log('get_vote');
 		$old_vote = self::get_vote( $metric_id, $context_id, $user_id );
-		$vote = self::validate_vote( $metric_type, $metric['options'], $vote, $old_vote );
+		$vote = self::validate_vote( $metric['type'], $metric['options'], $vote, $old_vote );
 
 		if ( $vote === null ) {
 			error_log('delete');
@@ -99,7 +96,7 @@ class Evaluate_Voting {
 
 		error_log('get_score');
 		$score = self::get_score( $metric_id, $context_id );
-		$score = call_user_func( $metric_type['score'], $score, $metric['options'], $vote, $old_vote );
+		$score = apply_filters( 'evaluate_adjust_score_' . $metric['type'], $score, $metric['options'], $vote, $old_vote );
 		
 		error_log('replace_score');
 		$wpdb->replace( Evaluate::$scores_table, array(
@@ -126,13 +123,14 @@ class Evaluate_Voting {
 
 	public static function validate_vote( $metric_type, $options, $vote, $old_vote ) {
 		error_log('check for null ' . var_export( $vote, true ) . ", " . var_export( is_numeric( $vote ), true ) );
+		// TODO: Maybe we should allow non-numeric votes through for extensibility or for Rubrics.
 		if ( ! is_numeric( $vote ) ) return null;
 
 		$vote = floatval( $vote );
 		if ( $vote === $old_vote || is_nan( $vote ) ) {
 			return null;
 		} else {
-			return call_user_func( $metric_type['validate'], $options, $vote );
+			return apply_filters( 'evaluate_validate_vote_' . $metric_type, $vote, $options );
 		}
 	}
 

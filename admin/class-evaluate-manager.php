@@ -124,10 +124,10 @@ class Evaluate_Manager {
 						<select id="type" class="nav" data-anchor="options" name="type">
 							<option value=""> - Choose a Type - </option>
 							<?php
-							foreach ( $metric_types as $slug => $metric_type ) {
+							foreach ( $metric_types as $slug => $title ) {
 								?>
-								<option value="<?php echo $metric_type['slug']; ?>" <?php selected( $metric_type['slug'], $metric['type'] ); ?>>
-									<?php echo $metric_type['title']; ?>
+								<option value="<?php echo $slug; ?>" <?php selected( $slug, $metric['type'] ); ?>>
+									<?php echo $title; ?>
 								</option>
 								<?php
 							}
@@ -138,12 +138,11 @@ class Evaluate_Manager {
 					<dd><input name="options[title]" value="<?php echo $metric['options']['title']; ?>"></input></dd>
 				</dl>
 				<?php
-				foreach ( $metric_types as $slug => $metric_type ) {
+				foreach ( $metric_types as $slug => $title ) {
 					?>
-					<dl class="options-<?php echo $metric_type['slug']; ?> options"<?php echo $metric_type['slug'] == $metric['type'] ? '' : ' style="display: none;"'; ?>>
+					<dl class="options-<?php echo $slug; ?> options"<?php echo $slug == $metric['type'] ? '' : ' style="display: none;"'; ?>>
 						<?php
-
-						echo $metric_type['options']( $metric['options'] );
+						do_action( 'evaluate_render_options_' . $slug, $metric['options'] );
 						?>
 					</dl>
 					<?php
@@ -194,7 +193,7 @@ class Evaluate_Manager {
 
 		// TODO: Verify nonce.
 
-		$options = apply_filters( 'evaluate_validate_' . $_POST['type'] . '_options', $_POST['options'] );
+		$options = apply_filters( 'evaluate_validate_options_' . $_POST['type'], $_POST['options'] );
 
 		$data = array(
 			'name' => sanitize_text_field( $_POST['name'] ),

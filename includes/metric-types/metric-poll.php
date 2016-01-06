@@ -2,15 +2,14 @@
 
 class Evaluate_Metric_Poll {
 
+	public const SLUG = 'poll';
+
 	public static function init() {
-		Evaluate_Metrics::register_type( array(
-			'title'   => "Poll",
-			'slug'    => 'poll',
-			'render'   => array( __CLASS__, 'render_metric' ),
-			'validate' => array( __CLASS__, 'validate_vote' ),
-			'score'    => array( __CLASS__, 'adjust_score' ),
-			'options'  => array( __CLASS__, 'render_options' ),
-		) );
+		Evaluate_Metrics::register_type( "Poll", self::SLUG );
+		add_action( 'evaluate_render_' . self::SLUG, array( __CLASS__, 'render_metric' ), 10, 3 );
+		add_filter( 'evaluate_validate_vote_' . self::SLUG, array( __CLASS__, 'validate_vote' ), 10, 1 );
+		add_filter( 'evaluate_adjust_score_' . self::SLUG, array( __CLASS__, 'adjust_score' ), 10, 3 );
+		add_action( 'evaluate_render_options_' . self::SLUG, array( __CLASS__, 'render_options' ), 10, 2 );
 	}
 
 	public static function render_metric( $options, $score, $user_vote = null ) {
@@ -38,7 +37,7 @@ class Evaluate_Metric_Poll {
 		<?php
 	}
 
-	public static function validate_vote( $options, $vote ) {
+	public static function validate_vote( $vote, $options ) {
 		$answers_count = preg_match_all( "/\r\n|\n|\r/", $options['answers'] );
 		$vote = intval( $vote );
 
