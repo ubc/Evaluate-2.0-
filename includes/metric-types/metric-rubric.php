@@ -8,23 +8,46 @@ class Evaluate_Metric_Rubric {
 		Evaluate_Metrics::register_type( array(
 			'title'   => "Rubric",
 			'slug'    => 'rubric',
-			'render'  => array( __CLASS__, 'render' ),
-			'score'   => array( __CLASS__, 'score' ),
-			'options' => array( __CLASS__, 'render_options' ),
+			'render'   => array( __CLASS__, 'render_metric' ),
+			'validate' => array( __CLASS__, 'validate_vote' ),
+			'score'    => array( __CLASS__, 'adjust_score' ),
+			'options'  => array( __CLASS__, 'render_options' ),
 		) );
 
 		// TODO: convert all metric type callbacks to actions/filters, for improved extensibility.
 		//add_filter( 'evaluate_validate_rubric_options', array( __CLASS__, 'validate_options' ) );
 	}
 
-	public static function render( $options, $user_vote = null ) {
+	public static function render_metric( $options, $user_vote = null ) {
+		foreach ( $options['fields'] as $index => $field ) {
+			?>
+			<span class="submetric submetric-<?php echo $metric['type']; ?>">
+				<?php
+				if ( ! empty( $field['options']['title'] ) ) {
+					?>
+					<strong class="metric-title"><?php echo $field['options']['title']; ?></strong>
+					<?php
+				}
+
+				// TODO: Pass user_vote and score
+				call_user_func( Evaluate_Metrics::get_type( $field['type'] )['render'], $field['options'], array(), null );
+				?>
+			</span>
+			<?php
+		}
+
 		?>
-		Rubric
+		<input type="submit" class="metric-submit"></input>
+		<hr>
 		<?php
 		var_dump( $options );
 	}
 
-	public static function score() {
+	public static function validate_vote( $options, $vote ) {
+		return $vote;
+	}
+
+	public static function adjust_score() {
 
 	}
 

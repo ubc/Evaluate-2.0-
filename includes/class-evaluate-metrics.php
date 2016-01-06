@@ -24,10 +24,6 @@ class Evaluate_Metrics {
 		wp_localize_script( 'evaluate-metrics', 'ajaxurl', admin_url( 'admin-ajax.php' ) );
 	}
 
-	public static function get_type( $slug ) {
-		return self::$metric_types[ $slug ];
-	}
-
 	public static function register_type( $attributes ) {
 		$fields = array( 'title', 'slug', 'render', 'options', 'score' );
 
@@ -39,7 +35,7 @@ class Evaluate_Metrics {
 	}
 
 	public static function render_metrics( $content, $context = null ) {
-		$metrics = self::get_metrics();
+		$metrics = self::get_metrics( array(), null );
 
 		if ( empty( $context ) ) {
 			if ( 'comment_text' === current_filter() ) {
@@ -54,6 +50,7 @@ class Evaluate_Metrics {
 		$user_id = Evaluate_Voting::get_user_id();
 
 		foreach ( $metrics as $key => $metric ) {
+			error_log( $metric['name'] );
 			if ( in_array( $context, $metric['options']['usage'] ) ) {
 				wp_enqueue_script( 'evaluate-metrics' );
 				wp_enqueue_style( 'evaluate-metrics' );
@@ -85,14 +82,17 @@ class Evaluate_Metrics {
 		return $content;
 	}
 
+	public static function get_type( $slug ) {
+		return self::$metric_types[ $slug ];
+	}
+
+	// TODO: Remove one of these two functions
 	public static function get_metric_types() {
 		return self::$metric_types;
 	}
 
 	public static function get_metrics( $ids = array(), $per_page = 5, $page_number = 1 ) {
 		global $wpdb;
-
-		if ( empty( $per_page ) ) $per_page = 5;
 
 		$sql = "SELECT * FROM " . Evaluate::$metric_table;
 
@@ -105,8 +105,10 @@ class Evaluate_Metrics {
 			$sql .= ! empty( $_REQUEST['order'] ) ? ' ' . esc_sql( $_REQUEST['order'] ) : ' ASC';
 		}
 
-		$sql .= " LIMIT " . $per_page;
-		$sql .= " OFFSET " . max( $page_number - 1, 0 ) * $per_page;
+		if ( ! empty( $per_page ) ) {
+			$sql .= " LIMIT " . $per_page;
+			$sql .= " OFFSET " . max( $page_number - 1, 0 ) * $per_page;
+		}
 
 		$results = $wpdb->get_results( $sql, 'ARRAY_A' );
 
