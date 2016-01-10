@@ -2,38 +2,41 @@
 
 class Evaluate_Metric_Range {
 
-	public const SLUG = 'range';
+	const SLUG = 'range';
 
 	public static function init() {
 		Evaluate_Metrics::register_type( "Range", self::SLUG );
-		add_action( 'evaluate_render_' . self::SLUG, array( __CLASS__, 'render_metric' ), 10, 3 );
-		add_filter( 'evaluate_validate_vote_' . self::SLUG, array( __CLASS__, 'validate_vote' ), 10, 1 );
-		add_filter( 'evaluate_adjust_score_' . self::SLUG, array( __CLASS__, 'adjust_score' ), 10, 3 );
+		add_action( 'evaluate_render_metric_' . self::SLUG, array( __CLASS__, 'render_metric' ), 10, 3 );
+		add_filter( 'evaluate_validate_vote_' . self::SLUG, array( __CLASS__, 'validate_vote' ), 10, 2 );
+		add_filter( 'evaluate_adjust_score_' . self::SLUG, array( __CLASS__, 'adjust_score' ), 10, 4 );
 		add_action( 'evaluate_render_options_' . self::SLUG, array( __CLASS__, 'render_options' ), 10, 2 );
 	}
 
-	public static function render_metric( $options, $score, $user_vote = null ) {
+	public static function render_metric( $options, $score, $metric_id, $user_vote = null ) {
 		if ( $options['icon'] === 'numeric' ) {
 			/*<input type="range" min="0" max="<?php echo $options['max']; ?>"></input>*/
 			?>
 			<input class="metric-input" type="number" min="0" max="<?php echo $options['max']; ?>" placeholder="0" value="<?php echo $user_vote; ?>" data-value="<?php echo $user_vote; ?>"></input> / <?php echo $options['max']; ?> - 
 			<?php
 		} else {
-			self::render_icons( $options['max'], $options['icon'], $user_vote );
+			self::render_icons( $options['max'], $options['icon'], $metric_id, $user_vote );
 		}
 		?>
 		<span class="metric-score"><?php echo $score['average']; ?></span>
 		<?php
 	}
 
-	public static function render_icons( $i, $icon_slug, $user_vote ) {
+	public static function render_icons( $i, $icon_slug, $metric_id, $user_vote ) {
 		if ( $i > 0 ) {
 			$icon_state = 'up';
 			//$icon_state = ( $i <= $user_vote ) ? 'up' : 'empty';
 			?>
-			<span class="metric-vote metric-vote-<?php echo $i; ?><?php echo $user_vote == $i ? ' active' : '';?>" data-value="<?php echo $i; ?>">
-				<?php self::render_icons( $i - 1, $icon_slug, $user_vote ); ?>
-				<i class="icon-<?php echo $icon_slug; ?>-<?php echo $icon_state; ?>"></i>
+			<span class="metric-vote metric-vote-<?php echo $i; ?><">
+				<?php self::render_icons( $i - 1, $icon_slug, $metric_id, $user_vote ); ?>
+				<label>
+					<input name="metric-<?php echo $metric_id; ?>" type="radio" value="<?php echo $i; ?>" <?php checked( $user_vote, $i ); ?>></input>
+					<i class="icon-<?php echo $icon_slug; ?>-<?php echo $icon_state; ?>"></i>
+				</label>
 			</span>
 			<?php
 		}

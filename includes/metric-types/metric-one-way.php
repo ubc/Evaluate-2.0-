@@ -2,27 +2,29 @@
 
 class Evaluate_Metric_One_Way {
 
-	public const SLUG = 'one-way';
+	const SLUG = 'one-way';
 
 	public static function init() {
 		Evaluate_Metrics::register_type( "One Way", self::SLUG );
-		add_action( 'evaluate_render_' . self::SLUG, array( __CLASS__, 'render_metric' ), 10, 3 );
+		error_log( 'add_action: ' . 'evaluate_render_' . self::SLUG );
+		add_action( 'evaluate_render_metric_' . self::SLUG, array( __CLASS__, 'render_metric' ), 10, 3 );
 		add_filter( 'evaluate_validate_vote_' . self::SLUG, array( __CLASS__, 'validate_vote' ), 10, 1 );
-		add_filter( 'evaluate_adjust_score_' . self::SLUG, array( __CLASS__, 'adjust_score' ), 10, 3 );
+		add_filter( 'evaluate_adjust_score_' . self::SLUG, array( __CLASS__, 'adjust_score' ), 10, 4 );
 		add_action( 'evaluate_render_options_' . self::SLUG, array( __CLASS__, 'render_options' ), 10, 2 );
 	}
 
-	public static function render_metric( $options, $score, $user_vote = null ) {
+	public static function render_metric( $options, $score, $metric_id, $user_vote = null ) {
 		?>
-		<a class="metric-vote metric-vote-1<?php echo $user_vote == 1 ? ' active' : '';?>" data-value="1">
+		<label class="metric-vote metric-vote-1<?php echo $user_vote == 1 ? ' active' : '';?>">
+			<input name="metric-<?php echo $metric_id; ?>" type="radio" value="1" <?php checked( $user_vote, 1 );?>></input>
 			<i class="icon-<?php echo $options['icon']; ?>-up"></i>
-			<?php echo $options['text']; ?>
-		</a>
+			<span><?php echo $options['text']; ?></span>
+		</label>
 		<span class="metric-score"><?php echo $score['value']; ?></span>
 		<?php
 	}
 
-	public static function validate_vote( $vote, $options ) {
+	public static function validate_vote( $vote ) {
 		if ( $vote > 0 ) {
 			return 1;
 		} else {
@@ -31,6 +33,7 @@ class Evaluate_Metric_One_Way {
 	}
 
 	public static function adjust_score( $score, $options, $vote, $old_vote = null ) {
+		error_log( '- adjust_score: ' . var_export($vote, true) . ', ' . var_export($old_vote, true));
 		$vote_diff = $vote - $old_vote;
 
 		if ( $vote !== $old_vote ) {

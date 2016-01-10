@@ -73,8 +73,8 @@ class Evaluate_Voting {
 		error_log('get_metric');
 		$metric = Evaluate_Metrics::get_metrics( array( $metric_id ) )[0];
 
-		error_log('get_vote');
 		$old_vote = self::get_vote( $metric_id, $context_id, $user_id );
+		error_log('get_vote ' . var_export($old_vote, true));
 		$vote = self::validate_vote( $metric['type'], $metric['options'], $vote, $old_vote );
 
 		if ( $vote === null ) {
@@ -96,6 +96,7 @@ class Evaluate_Voting {
 
 		error_log('get_score');
 		$score = self::get_score( $metric_id, $context_id );
+		error_log("old_vote is " . var_export($old_vote, true));
 		$score = apply_filters( 'evaluate_adjust_score_' . $metric['type'], $score, $metric['options'], $vote, $old_vote );
 		
 		error_log('replace_score');
@@ -124,13 +125,22 @@ class Evaluate_Voting {
 	public static function validate_vote( $metric_type, $options, $vote, $old_vote ) {
 		error_log('check for null ' . var_export( $vote, true ) . ", " . var_export( is_numeric( $vote ), true ) );
 		// TODO: Maybe we should allow non-numeric votes through for extensibility or for Rubrics.
-		if ( ! is_numeric( $vote ) ) return null;
+		/*if ( ! is_numeric( $vote ) ) return null;
 
 		$vote = floatval( $vote );
 		if ( $vote === $old_vote || is_nan( $vote ) ) {
 			return null;
-		} else {
+		} else {*/
 			return apply_filters( 'evaluate_validate_vote_' . $metric_type, $vote, $options );
+		//}
+	}
+
+	public static function force_numeric_value( $value ) {
+		$value = floatval( $value );
+		if ( is_nan( $value ) ) {
+			return null;
+		} else {
+			return $value;
 		}
 	}
 

@@ -68,6 +68,7 @@ class Evaluate {
 		
 		dbDelta( $sql );
 		
+		// TODO: We need a way to store metric votes. Maybe they should be individually stored. Maybe add a 'field_id' column
 		$sql = "CREATE TABLE " . self::$voting_table . " (
 			metric_id bigint(11) NOT NULL,
 			context_id varchar(40) NOT NULL,

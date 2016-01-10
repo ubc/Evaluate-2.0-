@@ -1,16 +1,21 @@
 
 .metric-vote {
-	cursor: pointer;
-}
-
-.metric-vote:not(.active) {
 	color: #777;
 }
 
-.metric-vote.active {
+.metric-vote input:checked + * {
 	color: #333;
+}
+
+.metric-vote {
+	cursor: pointer;
 }
 
 .metric-vote.active .metric-vote {
 	color: inherit;
+}
+
+.metric-vote input[type="radio"],
+.metric-vote input[type="checkbox"] {
+	/*display: none;*/
 }

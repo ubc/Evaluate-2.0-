@@ -2,39 +2,55 @@
 
 class Evaluate_Metric_Rubric {
 
-	public const SLUG = 'rubric';
+	const SLUG = 'rubric';
 
 	public static function init() {
 		require_once( Evaluate::$directory_path . 'includes/rubrics.php' );
 
 		Evaluate_Metrics::register_type( "Rubric", self::SLUG );
-		add_action( 'evaluate_render_' . self::SLUG, array( __CLASS__, 'render_metric' ), 10, 3 );
-		add_filter( 'evaluate_validate_vote_' . self::SLUG, array( __CLASS__, 'validate_vote' ), 10, 1 );
-		add_filter( 'evaluate_adjust_score_' . self::SLUG, array( __CLASS__, 'adjust_score' ), 10, 3 );
+		add_action( 'evaluate_render_metric_' . self::SLUG, array( __CLASS__, 'render_metric' ), 10, 3 );
+		add_filter( 'evaluate_validate_vote_' . self::SLUG, array( __CLASS__, 'validate_vote' ), 10, 2 );
+		add_filter( 'evaluate_adjust_score_' . self::SLUG, array( __CLASS__, 'adjust_score' ), 10, 4 );
 		add_action( 'evaluate_render_options_' . self::SLUG, array( __CLASS__, 'render_options' ), 10, 2 );
 		//add_filter( 'evaluate_validate_options_' . self::SLUG, array( __CLASS__, 'validate_options' ) );
+
+		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_scripts_and_styles' ) );
 	}
 
-	public static function render_metric( $options, $user_vote = null ) {
-		foreach ( $options['fields'] as $index => $field ) {
-			?>
-			<span class="submetric submetric-<?php echo $metric['type']; ?>">
-				<?php
-				if ( ! empty( $field['options']['title'] ) ) {
-					?>
-					<strong class="metric-title"><?php echo $field['options']['title']; ?></strong>
-					<?php
-				}
+	public static function enqueue_scripts_and_styles() {
+		wp_register_script( 'evaluate-rubrics', Evaluate::$directory_url . 'js/evaluate-rubrics.js' );
+	}
 
-				// TODO: Pass user_vote and score
-				do_action( 'evaluate_render_' . $field['type'], $field['options'], array(), null );
-				?>
-			</span>
-			<?php
-		}
-
+	public static function render_metric( $options, $score, $metric_id, $user_vote = null ) {
+		wp_enqueue_script( 'evaluate-rubrics' );
 		?>
-		<input type="submit" class="metric-submit"></input>
+		<form method="POST" class="metric-form">
+			<?php
+			foreach ( $options['fields'] as $index => $field ) {
+				?>
+				<div class="metric metric-<?php echo $field['type']; ?>">
+					<?php
+					if ( ! empty( $field['options']['title'] ) ) {
+						?>
+						<strong class="metric-title"><?php echo $field['options']['title']; ?></strong>
+						<?php
+					}
+
+					// TODO: Pass user_vote and score
+					$score = array(
+						'value' => null,
+					);
+					
+					// TODO 'field-'$index expects an integer, not a string
+					do_action( 'evaluate_render_metric_' . $field['type'], $field['options'], $score, 'field-'.$index, null );
+					?>
+				</div>
+				<?php
+			}
+
+			?>
+			<input type="submit" value="Submit"></input>
+		</form>
 		<hr>
 		<?php
 		var_dump( $options );
@@ -44,8 +60,8 @@ class Evaluate_Metric_Rubric {
 		return $vote;
 	}
 
-	public static function adjust_score() {
-
+	public static function adjust_score( $score, $options, $vote, $old_vote = null ) {
+		return $score;
 	}
 
 	public static function render_options( $options, $name = 'options[%s]' ) {

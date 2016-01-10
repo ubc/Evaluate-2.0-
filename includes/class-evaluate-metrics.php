@@ -21,7 +21,7 @@ class Evaluate_Metrics {
 		wp_register_style( 'evaluate-metrics', Evaluate::$directory_url . 'css/evaluate-metrics.css' );
 		wp_register_style( 'evaluate-icons', Evaluate::$directory_url . 'fontello/css/evaluate.css' );
 
-		wp_localize_script( 'evaluate-metrics', 'ajaxurl', admin_url( 'admin-ajax.php' ) );
+		wp_localize_script( 'evaluate-metrics', 'evaluate_ajaxurl', admin_url( 'admin-ajax.php' ) );
 	}
 
 	public static function register_type( $title, $slug ) {
@@ -56,7 +56,7 @@ class Evaluate_Metrics {
 
 				ob_start();
 				?>
-				<span class="metric metric-<?php echo $metric['type']; ?>"
+				<span class="metric metric-<?php echo $metric['metric_id']; ?> metric-<?php echo $metric['type']; ?>"
 					data-id="<?php echo $metric['metric_id']; ?>"
 					data-context="<?php echo $context_id; ?>"
 					data-nonce="<?php echo Evaluate_Voting::get_nonce( $metric['metric_id'], $context_id ); ?>">
@@ -69,7 +69,8 @@ class Evaluate_Metrics {
 
 					$score = Evaluate_Voting::get_score( $metric['metric_id'], $context_id );
 					$user_vote = Evaluate_Voting::get_vote( $metric['metric_id'], $context_id, $user_id );
-					do_action( 'evaluate_render_metric_' . $metric['type'], $metric['options'], $score, $user_vote );
+					error_log( "do_action " . 'evaluate_render_metric_' . $metric['type'] );
+					do_action( 'evaluate_render_metric_' . $metric['type'], $metric['options'], $score, $metric['metric_id'], $user_vote );
 					?>
 				</span>
 				<?php

@@ -2,32 +2,33 @@
 
 class Evaluate_Metric_Poll {
 
-	public const SLUG = 'poll';
+	const SLUG = 'poll';
 
 	public static function init() {
 		Evaluate_Metrics::register_type( "Poll", self::SLUG );
-		add_action( 'evaluate_render_' . self::SLUG, array( __CLASS__, 'render_metric' ), 10, 3 );
-		add_filter( 'evaluate_validate_vote_' . self::SLUG, array( __CLASS__, 'validate_vote' ), 10, 1 );
-		add_filter( 'evaluate_adjust_score_' . self::SLUG, array( __CLASS__, 'adjust_score' ), 10, 3 );
+		add_action( 'evaluate_render_metric_' . self::SLUG, array( __CLASS__, 'render_metric' ), 10, 3 );
+		add_filter( 'evaluate_validate_vote_' . self::SLUG, array( __CLASS__, 'validate_vote' ), 10, 2 );
+		add_filter( 'evaluate_adjust_score_' . self::SLUG, array( __CLASS__, 'adjust_score' ), 10, 4 );
 		add_action( 'evaluate_render_options_' . self::SLUG, array( __CLASS__, 'render_options' ), 10, 2 );
 	}
 
-	public static function render_metric( $options, $score, $user_vote = null ) {
+	public static function render_metric( $options, $score, $metric_id, $user_vote = null ) {
 		?>
 		<div>
 			<strong><?php echo $options['question']; ?></strong>
 			<ul>
 			<?php
-			foreach ( preg_split( "/\r\n|\n|\r/", $options['answers'] ) as $index => $text ) {
-				$vote_count = empty( $score['data']['votes'][ $index ] ) ? 0 : $score['data']['votes'][ $index ];
+			foreach ( preg_split( "/\r\n|\n|\r/", $options['answers'] ) as $i => $text ) {
+				$vote_count = empty( $score['data']['votes'][ $i ] ) ? 0 : $score['data']['votes'][ $i ];
 				?>
 				<li>
-					<a class="metric-vote metric-vote-<?php echo $index; ?><?php echo is_numeric( $user_vote ) && $user_vote == $index ? ' active' : '';?>" data-value="<?php echo $index; ?>">
-						<?php echo $text; ?>
-					</a>
-					(<span class="metric-score-<?php echo $index; ?>"><?php echo $vote_count; ?></span>)
+					<label class="metric-vote metric-vote-<?php echo $i; ?>">
+						<input name="metric-<?php echo $metric_id; ?>" type="radio" value="<?php echo $i; ?>" <?php checked( $user_vote, $i );?>></input>
+						<span><?php echo $text; ?></span>
+					</label>
+					(<span class="metric-score-<?php echo $i; ?>"><?php echo $vote_count; ?></span>)
 					<br>
-					<progress class="metric-score-<?php echo $index; ?>" max="<?php echo $score['count']; ?>" value="<?php echo $vote_count; ?>"></progress>
+					<progress class="metric-score-<?php echo $i; ?>" max="<?php echo $score['count']; ?>" value="<?php echo $vote_count; ?>"></progress>
 				</li>
 				<?php
 			}

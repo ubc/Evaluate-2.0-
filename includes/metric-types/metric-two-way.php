@@ -2,28 +2,30 @@
 
 class Evaluate_Metric_Two_Way {
 
-	public const SLUG = 'two-way';
+	const SLUG = 'two-way';
 
 	public static function init() {
 		Evaluate_Metrics::register_type( "Two Way", self::SLUG );
-		add_action( 'evaluate_render_' . self::SLUG, array( __CLASS__, 'render_metric' ), 10, 3 );
-		add_filter( 'evaluate_validate_vote_' . self::SLUG, array( __CLASS__, 'validate_vote' ), 10, 1 );
-		add_filter( 'evaluate_adjust_score_' . self::SLUG, array( __CLASS__, 'adjust_score' ), 10, 3 );
+		add_action( 'evaluate_render_metric_' . self::SLUG, array( __CLASS__, 'render_metric' ), 10, 3 );
+		add_filter( 'evaluate_validate_vote_' . self::SLUG, array( __CLASS__, 'validate_vote' ), 10, 2 );
+		add_filter( 'evaluate_adjust_score_' . self::SLUG, array( __CLASS__, 'adjust_score' ), 10, 4 );
 		add_action( 'evaluate_render_options_' . self::SLUG, array( __CLASS__, 'render_options' ), 10, 2 );
 	}
 
 	// TODO: Prevent people from voting with non-valid quantities, like +3 or -10 for example.
-	public static function render_metric( $options, $score, $user_vote = null ) {
+	public static function render_metric( $options, $score, $metric_id, $user_vote = null ) {
 		?>
-		<a class="metric-vote metric-vote-1<?php echo $user_vote == 1 ? ' active' : '';?>" data-value="1">
+		<label class="metric-vote metric-vote-1">
+			<input name="metric-<?php echo $metric_id; ?>" type="radio" value="1" <?php checked( $user_vote, 1 );?>></input>
 			<i class="icon-<?php echo $options['icon']; ?>-up"></i>
-			<?php echo $options['text_up']; ?>
-		</a>
-		<a class="metric-vote metric-vote--1<?php echo $user_vote == -1 ? ' active' : '';?>" data-value="-1">
+			<span><?php echo $options['text_up']; ?></span>
+		</label>
+		<label class="metric-vote metric-vote--1">
+			<input name="metric-<?php echo $metric_id; ?>" type="radio" value="-1" <?php checked( $user_vote, -1 );?>></input>
 			<i class="icon-<?php echo $options['icon']; ?>-down"></i>
-			<?php echo $options['text_down']; ?>
-		</a>
-		<span class="metric-score"><?php echo round( $score['average'] ); ?></span>
+			<span><?php echo $options['text_down']; ?></span>
+		</label>
+		<span class="metric-score"><?php echo $score['value']; ?></span>
 		<?php
 	}
 
