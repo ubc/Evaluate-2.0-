@@ -40,7 +40,7 @@ class Evaluate {
 	 * @filter plugins_loaded
 	 */
 	public static function load() {
-		require_once( self::$directory_path . 'includes/class-evaluate-api.php' );
+		require_once( self::$directory_path . 'includes/class-evaluate-metric-type.php' );
 		require_once( self::$directory_path . 'includes/class-evaluate-metrics.php' );
 		require_once( self::$directory_path . 'includes/class-evaluate-voting.php' );
 
@@ -57,7 +57,7 @@ class Evaluate {
 		require_once( ABSPATH . 'wp-admin/includes/upgrade.php' );
 		
 		$sql = "CREATE TABLE " . self::$metric_table . " (
-			metric_id bigint(11) NOT NULL AUTO_INCREMENT,
+			metric_id int(11) NOT NULL AUTO_INCREMENT,
 			name varchar(64) NOT NULL,
 			type varchar(10) NOT NULL DEFAULT 'one-way',
 			options blob NOT NULL,
@@ -70,17 +70,17 @@ class Evaluate {
 		
 		// TODO: We need a way to store metric votes. Maybe they should be individually stored. Maybe add a 'field_id' column
 		$sql = "CREATE TABLE " . self::$voting_table . " (
-			metric_id bigint(11) NOT NULL,
+			metric_id int(11) NOT NULL,
 			context_id varchar(40) NOT NULL,
 			user_id varchar(40) NOT NULL,
-			vote float NOT NULL,
+			vote tinyblob NOT NULL,
 			date timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 			PRIMARY KEY  (metric_id, context_id, user_id) );";
 		
 		dbDelta( $sql );
 		
 		$sql = "CREATE TABLE " . self::$scores_table . " (
-			metric_id bigint(11) NOT NULL,
+			metric_id int(11) NOT NULL,
 			context_id varchar(40) NOT NULL,
 			count int(11) NOT NULL,
 			value float NOT NULL,

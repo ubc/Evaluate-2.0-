@@ -24,32 +24,38 @@ class Evaluate_Metrics {
 		wp_localize_script( 'evaluate-metrics', 'evaluate_ajaxurl', admin_url( 'admin-ajax.php' ) );
 	}
 
-	public static function register_type( $title, $slug ) {
-		self::$metric_types[ $slug ] = $title;
+	public static function register_type( $metric_type ) {
+		self::$metric_types[ $metric_type->slug ] = $metric_type;
 	}
 
 	public static function get_metric_types() {
 		return self::$metric_types;
 	}
 
+	// ===== OLDIES ===== //
+
 	public static function render_metrics( $content, $context = null ) {
 		$metrics = self::get_metrics( array(), null );
 
 		if ( empty( $context ) ) {
 			if ( 'comment_text' === current_filter() ) {
-				$context = 'comments';
+				$context_type = 'comments';
 				$context_id = get_comment_ID();
 			} else {
-				$context = get_post_type();
+				$context_type = get_post_type();
 				$context_id = get_the_ID();
 			}
+
+			$context = apply_filters( 'evaluate_get_context', array(
+				'type' => $context_type,
+				'id'   => $context_id,
+			) );
 		}
 
-		$user_id = Evaluate_Voting::get_user_id();
+		$user_key = Evaluate_Voting::get_user_key();
 
 		foreach ( $metrics as $key => $metric ) {
-			error_log( $metric['name'] );
-			if ( in_array( $context, $metric['options']['usage'] ) ) {
+			if ( in_array( $context['type'], $metric['options']['usage'] ) && in_array( $metric['type'], array_keys( self::$metric_types ) ) ) {
 				wp_enqueue_script( 'evaluate-metrics' );
 				wp_enqueue_style( 'evaluate-metrics' );
 				wp_enqueue_style( 'evaluate-icons' );
@@ -67,10 +73,10 @@ class Evaluate_Metrics {
 						<?php
 					}
 
-					$score = Evaluate_Voting::get_score( $metric['metric_id'], $context_id );
-					$user_vote = Evaluate_Voting::get_vote( $metric['metric_id'], $context_id, $user_id );
-					error_log( "do_action " . 'evaluate_render_metric_' . $metric['type'] );
-					do_action( 'evaluate_render_metric_' . $metric['type'], $metric['options'], $score, $metric['metric_id'], $user_vote );
+					$metric_type = self::$metric_types[ $metric['type'] ];
+					$score = $metric_type->get_score( $metric['metric_id'], $context['id'] );
+					$user_vote = $metric_type->get_vote( $metric, $context['id'], $user_key );
+					$metric_type->render_display( $metric, $score, $user_vote );
 					?>
 				</span>
 				<?php
@@ -112,7 +118,7 @@ class Evaluate_Metrics {
 	}
 
 	public static function get_metric_contexts() {
-		// Run a filter that retrieves all contexts in which a metric can be posted.
+		// TODO: Run a filter that retrieves all contexts in which a metric can be posted.
 	}
 
 }

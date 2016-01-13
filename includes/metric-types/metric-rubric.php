@@ -1,18 +1,13 @@
 <?php
 
-class Evaluate_Metric_Rubric {
+class Evaluate_Metric_Rubric extends Evaluate_Metric_Type {
 
 	const SLUG = 'rubric';
+	const FIELD_KEY = '_field_';
 
-	public static function init() {
+	public function __construct() {
 		require_once( Evaluate::$directory_path . 'includes/rubrics.php' );
-
-		Evaluate_Metrics::register_type( "Rubric", self::SLUG );
-		add_action( 'evaluate_render_metric_' . self::SLUG, array( __CLASS__, 'render_metric' ), 10, 3 );
-		add_filter( 'evaluate_validate_vote_' . self::SLUG, array( __CLASS__, 'validate_vote' ), 10, 2 );
-		add_filter( 'evaluate_adjust_score_' . self::SLUG, array( __CLASS__, 'adjust_score' ), 10, 4 );
-		add_action( 'evaluate_render_options_' . self::SLUG, array( __CLASS__, 'render_options' ), 10, 2 );
-		//add_filter( 'evaluate_validate_options_' . self::SLUG, array( __CLASS__, 'validate_options' ) );
+		parent::__construct( "Rubric", self::SLUG );
 
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_scripts_and_styles' ) );
 	}
@@ -21,12 +16,18 @@ class Evaluate_Metric_Rubric {
 		wp_register_script( 'evaluate-rubrics', Evaluate::$directory_url . 'js/evaluate-rubrics.js' );
 	}
 
-	public static function render_metric( $options, $score, $metric_id, $user_vote = null ) {
+	// ===== FRONT FACING CODE ==== //
+	public function render_display( $metric, $score, $user_vote = null ) {
 		wp_enqueue_script( 'evaluate-rubrics' );
+		$metric_id = $metric['metric_id'];
+		$fields = $metric['options']['fields'];
+		$metric_types = Evaluate_Metrics::get_metric_types();
+		$value = $score['value'];
+
 		?>
 		<form method="POST" class="metric-form">
 			<?php
-			foreach ( $options['fields'] as $index => $field ) {
+			foreach ( $fields as $index => $field ) {
 				?>
 				<div class="metric metric-<?php echo $field['type']; ?>">
 					<?php
@@ -39,10 +40,16 @@ class Evaluate_Metric_Rubric {
 					// TODO: Pass user_vote and score
 					$score = array(
 						'value' => null,
+						'average' => null,
 					);
-					
-					// TODO 'field-'$index expects an integer, not a string
-					do_action( 'evaluate_render_metric_' . $field['type'], $field['options'], $score, 'field-'.$index, null );
+
+					$vote = isset( $user_vote[ $index ] ) ? $user_vote[ $index ] : null;
+
+					// TODO: 'field-'$index expects an integer, not a string
+					$field['metric_id'] = 'field-' . $index;
+
+					$metric_types[ $field['type'] ]->render_display( $field, $score, $vote );
+					do_action( 'evaluate_render_metric_' . $field['type'], $field['options'], $score, 'field-' . $index, null );
 					?>
 				</div>
 				<?php
@@ -50,21 +57,107 @@ class Evaluate_Metric_Rubric {
 
 			?>
 			<input type="submit" value="Submit"></input>
+			<span class="metric-rubric-score"><?php echo $value; ?></span>
+			<!--span class="metric-rubric-total"><?php echo $user_vote['total']; ?></span-->
 		</form>
-		<hr>
 		<?php
-		var_dump( $options );
 	}
 
-	public static function validate_vote( $vote, $options ) {
+	// ===== VOTE / SCORE HANDLING ==== //
+	public function validate_vote( $vote, $old_vote, $options ) {
+		if ( ! is_array( $vote ) ) {
+			return null;
+		}
+
+		$metric_types = Evaluate_Metrics::get_metric_types();
+		$result = array();
+		$null = true;
+
+		foreach ( $options['fields'] as $index => $field ) {
+			$key = 'metric-field-' . $index;
+
+			if ( isset( $vote[ $key ] ) ) {
+				$metric_type = $metric_types[ $field['type'] ];
+				$result[ $index ] = $metric_type->validate_vote( $vote[ $key ], $old_vote[ $index ], $field['options'] );
+				$null = false;
+			} else {
+				$result[ $index ] = null;
+			}
+		}
+
+		if ( $result == $old_vote || $null ) {
+			return null;
+		} else {
+			return self::calculate_total( $result, $options );
+		}
+	}
+
+	public function modify_score( $score, $vote, $old_vote, $metric, $context_id ) {
+		$vote_total = isset( $vote['total'] ) ? $vote['total'] : 0;
+		$old_vote_total = isset( $old_vote['total'] ) ? $old_vote['total'] : 0;
+		$vote_diff = $vote_total - $old_vote_total;
+		$score['average'] = $score['average'] * $score['count'];
+
+		error_log( "vote comparison " . var_export( $vote, true ) . ' !== ' . var_export( $old_vote, true ) . ' = ' . ( $vote !== $old_vote ) );
+		if ( $vote !== $old_vote ) {
+			if ( $vote === null ) {
+				$score['count']--;
+				error_log('decrement to ' . $score['count']);
+			} elseif ( $old_vote === null ) {
+				$score['count']++;
+				error_log('increment to ' . $score['count']);
+			}
+		}
+
+		if ( $score['count'] == 0 ) {
+			$score['average'] = 0;
+		} else {
+			$score['average'] = ( $score['average'] + $vote_diff ) / $score['count'];
+		}
+
+		$score['value'] = $score['average'];
+		return parent::modify_score( $score, $vote, $old_vote, $metric, $context_id );
+	}
+
+	public function set_vote( $vote, $metric, $context_id, $user_id ) {
+		foreach ( $metric['options']['fields'] as $index => $field ) {
+			$field_vote = isset( $vote[ $index ] ) ? $vote[ $index ] : null;
+			$field_context = $context_id . self::FIELD_KEY . $index;
+
+			parent::set_vote( $field_vote, $metric, $field_context, $user_id );
+		}
+	}
+
+	public function get_vote( $metric, $context_id, $user_id ) {
+		$vote = array();
+		$null = true;
+
+		foreach ( $metric['options']['fields'] as $index => $field ) {
+			$field_context = $context_id . self::FIELD_KEY . $index;
+			$vote[ $index ] = parent::get_vote( $metric, $field_context, $user_id );
+
+			if ( $vote[ $index ] !== null ) $null = false;
+		}
+
+		if ( $null ) {
+			return null;
+		} else {
+			return self::calculate_total( $vote, $metric['options'] );
+		}
+	}
+
+	public function calculate_total( $vote, $options ) {
+		$vote['total'] = 0;
+
+		foreach ( $options['fields'] as $index => $field ) {
+			$vote['total'] += $vote[ $index ] * $field['weight'];
+		}
+
 		return $vote;
 	}
 
-	public static function adjust_score( $score, $options, $vote, $old_vote = null ) {
-		return $score;
-	}
-
-	public static function render_options( $options, $name = 'options[%s]' ) {
+	// ===== ADMIN FACING CODE ==== //
+	public function render_options( $options, $name = 'options[%s]' ) {
 		$options = shortcode_atts( array(
 			'rubric' => '',
 			'fields' => array(),
@@ -119,7 +212,7 @@ class Evaluate_Metric_Rubric {
 					<ul>
 						<?php
 						foreach ( $rubric['fields'] as $key => $field ) {
-							echo $field['title'] . " - a " . $metric_types[ $field['type'] ] . " metric, with " . $field['weight'] . " weight.";
+							echo $field['title'] . " - a " . $metric_types[ $field['type'] ]->name . " metric, with " . $field['weight'] . " weight.";
 						}
 						?>
 					</ul>
@@ -144,10 +237,10 @@ class Evaluate_Metric_Rubric {
 			<select class="nav rubric-field-type" data-anchor="field-options" data-siblings="true" name="<?php printf( $name, 'type' ); ?>">
 				<option value=""> - Type - </option>
 				<?php
-				foreach ( $metric_types as $slug => $title ) {
+				foreach ( $metric_types as $slug => $metric_type ) {
 					?>
 					<option value="<?php echo $slug; ?>" <?php selected( $slug, $field['type'] ); ?>>
-						<?php echo $title; ?>
+						<?php echo $metric_type->name; ?>
 					</option>
 					<?php
 				}
@@ -156,12 +249,12 @@ class Evaluate_Metric_Rubric {
 			<input name="<?php printf( $name, 'title' ); ?>" type="text" placeholder="Title" value="<?php echo $field['title']; ?>"></input>
 			<input name="<?php printf( $name, 'weight' ); ?>" type="number" placeholder="Weight (1.0)" value="<?php echo $field['weight']; ?>"></input>
 			<?php
-			foreach ( $metric_types as $slug => $title ) {
+			foreach ( $metric_types as $slug => $metric_type ) {
 				?>
 				<dl class="field-options-<?php echo $slug; ?> field-options"<?php echo $slug == $field['type'] ? '' : ' style="display: none;"'; ?>>
 					<?php
 					$options_name = sprintf( $name, 'options' ) . '[%s]';
-					do_action( 'evaluate_render_options_' . $field['type'], $field['options'], $options_name );
+					$metric_type->render_options( $field['options'], $options_name );
 					?>
 				</dl>
 				<?php
@@ -173,4 +266,4 @@ class Evaluate_Metric_Rubric {
 
 }
 
-Evaluate_Metric_Rubric::init();
+Evaluate_Metrics::register_type( new Evaluate_Metric_Rubric() );

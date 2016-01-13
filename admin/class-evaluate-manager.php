@@ -118,16 +118,16 @@ class Evaluate_Manager {
 				<input type="hidden" name="metric_id" value="<?php echo $metric_id; ?>"></input>
 				<dl>
 					<dt><label for="name">Name</label></dt>
-					<dd><input name="name" value="<?php echo $metric['name']; ?>"></input></dd>
+					<dd><input name="name" value="<?php echo $metric['name']; ?>" autocomplete="off"></input></dd>
 					<dt><label for="type">Type</label></dt>
 					<dd>
 						<select id="type" class="nav" data-anchor="options" name="type">
 							<option value=""> - Choose a Type - </option>
 							<?php
-							foreach ( $metric_types as $slug => $title ) {
+							foreach ( $metric_types as $slug => $metric_type ) {
 								?>
 								<option value="<?php echo $slug; ?>" <?php selected( $slug, $metric['type'] ); ?>>
-									<?php echo $title; ?>
+									<?php echo $metric_type->name; ?>
 								</option>
 								<?php
 							}
@@ -135,14 +135,14 @@ class Evaluate_Manager {
 						</select>
 					</dd>
 					<dt><label for="options[title]">Display Title</label></dt>
-					<dd><input name="options[title]" value="<?php echo $metric['options']['title']; ?>"></input></dd>
+					<dd><input name="options[title]" value="<?php echo $metric['options']['title']; ?>" autocomplete="off"></input></dd>
 				</dl>
 				<?php
-				foreach ( $metric_types as $slug => $title ) {
+				foreach ( $metric_types as $slug => $metric_type ) {
 					?>
 					<dl class="options-<?php echo $slug; ?> options"<?php echo $slug == $metric['type'] ? '' : ' style="display: none;"'; ?>>
 						<?php
-						do_action( 'evaluate_render_options_' . $slug, $metric['options'] );
+						$metric_type->render_options( $metric['options'] );
 						?>
 					</dl>
 					<?php
@@ -193,7 +193,8 @@ class Evaluate_Manager {
 
 		// TODO: Verify nonce.
 
-		$options = apply_filters( 'evaluate_validate_options_' . $_POST['type'], $_POST['options'] );
+		$metric_type = Evaluate_Metrics::get_metric_types()[ $_POST['type'] ];
+		$options = $metric_type->filter_options( $_POST['options'] );
 
 		$data = array(
 			'name' => sanitize_text_field( $_POST['name'] ),

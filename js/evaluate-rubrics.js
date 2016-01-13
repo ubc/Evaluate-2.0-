@@ -2,7 +2,14 @@
 var Evaluate_Rubrics = {
 
 	update_rubric_display: function( metric, args ) {
-		console.log("Received", args);
+		var vote = null;
+
+		if ( args.vote != null ) {
+			vote = Math.round( args.vote.total );
+		}
+
+		metric.find( '.metric-rubric-total' ).text( vote );
+		metric.find( '.metric-rubric-score' ).text( Math.round( args.average ) );
 	},
 
 };

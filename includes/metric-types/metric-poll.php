@@ -1,25 +1,28 @@
 <?php
 
-class Evaluate_Metric_Poll {
+class Evaluate_Metric_Poll extends Evaluate_Metric_Type {
 
 	const SLUG = 'poll';
 
-	public static function init() {
-		Evaluate_Metrics::register_type( "Poll", self::SLUG );
-		add_action( 'evaluate_render_metric_' . self::SLUG, array( __CLASS__, 'render_metric' ), 10, 3 );
-		add_filter( 'evaluate_validate_vote_' . self::SLUG, array( __CLASS__, 'validate_vote' ), 10, 2 );
-		add_filter( 'evaluate_adjust_score_' . self::SLUG, array( __CLASS__, 'adjust_score' ), 10, 4 );
-		add_action( 'evaluate_render_options_' . self::SLUG, array( __CLASS__, 'render_options' ), 10, 2 );
+	public function __construct() {
+		parent::__construct( "Poll", self::SLUG );
 	}
 
-	public static function render_metric( $options, $score, $metric_id, $user_vote = null ) {
+	// ===== FRONT FACING CODE ==== //
+	public function render_display( $metric, $score, $user_vote = null ) {
+		$metric_id = $metric['metric_id'];
+		$question = $metric['options']['question'];
+		$answers = preg_split( "/\r\n|\n|\r/", $metric['options']['answers'] );
+		$total_votes = $score['count'];
+		$votes = $score['data']['votes'];
+
 		?>
 		<div>
-			<strong><?php echo $options['question']; ?></strong>
+			<strong><?php echo $question; ?></strong>
 			<ul>
 			<?php
-			foreach ( preg_split( "/\r\n|\n|\r/", $options['answers'] ) as $i => $text ) {
-				$vote_count = empty( $score['data']['votes'][ $i ] ) ? 0 : $score['data']['votes'][ $i ];
+			foreach ( $answers as $i => $text ) {
+				$vote_count = empty( $votes[ $i ] ) ? 0 : $votes[ $i ];
 				?>
 				<li>
 					<label class="metric-vote metric-vote-<?php echo $i; ?>">
@@ -28,7 +31,7 @@ class Evaluate_Metric_Poll {
 					</label>
 					(<span class="metric-score-<?php echo $i; ?>"><?php echo $vote_count; ?></span>)
 					<br>
-					<progress class="metric-score-<?php echo $i; ?>" max="<?php echo $score['count']; ?>" value="<?php echo $vote_count; ?>"></progress>
+					<progress class="metric-score-<?php echo $i; ?>" max="<?php echo $total_votes; ?>" value="<?php echo $vote_count; ?>"></progress>
 				</li>
 				<?php
 			}
@@ -38,11 +41,16 @@ class Evaluate_Metric_Poll {
 		<?php
 	}
 
-	public static function validate_vote( $vote, $options ) {
-		$answers_count = preg_match_all( "/\r\n|\n|\r/", $options['answers'] );
-		$vote = intval( $vote );
+	// ===== VOTE / SCORE HANDLING ==== //
+	public function validate_vote( $vote, $old_vote, $options ) {
+		if ( $vote === '' ) {
+			return null;
+		}
 
-		error_log('check for null ' . var_export( $vote, true ) . ", " . var_export( $answers_count, true ) . ", " . var_export( is_integer( $vote ), true ) . ", " . var_export( $vote < 0, true ) . ", " . var_export( $vote > $answers_count, true ) );
+		$answers_count = preg_match_all( "/\r\n|\n|\r/", $options['answers'] );
+		$vote = parent::validate_vote( $vote, $old_vote, $options );
+		$vote = intval( $vote ); // Force integer value.
+
 		if ( ! is_integer( $vote ) || $vote < 0 || $vote > $answers_count ) {
 			return null;
 		} else {
@@ -50,49 +58,43 @@ class Evaluate_Metric_Poll {
 		}
 	}
 
-	public static function adjust_score( $score, $options, $vote, $old_vote = null ) {
-		error_log( "- adjust score: " . var_export( $score, true ) . ", " . var_export( $vote, true ) . ", " . var_export( $old_vote, true ) );
+	public function modify_score( $score, $vote, $old_vote, $metric, $context_id ) {
 
 		if ( $vote !== $old_vote ) {
 			if ( $vote === null ) {
 				$score['count']--;
-				error_log( "- increment count to " . var_export( $score['count'], true ) );
 			} elseif ( $old_vote === null ) {
 				$score['count']++;
-				error_log( "- decrement count to " . var_export( $score['count'], true ) );
 			}
 		}
 
 		// Initialize the data array
 		if ( empty( $score['data']['votes'] ) ) {
-			$answers_count = count( preg_split( "/\r\n|\n|\r/", $options['answers'] ) );
+			$answers_count = count( preg_split( "/\r\n|\n|\r/", $metric['options']['answers'] ) );
 
 			for ( $i = 0; $i < $answers_count; $i++ ) { 
 				$score['data']['votes'][ $i ] = 0;
 			}
-			error_log( "- initialize data array" );
 		}
 
+		// Tally votes
 		if ( $old_vote !== null ) {
 			$score['data']['votes'][ $old_vote ]--;
-			error_log( "- decrement old vote to " . var_export( $score['data']['votes'][ $old_vote ], true ) );
-		}
+		} 
 
 		if ( $vote !== null ) {
 			$score['data']['votes'][ $vote ]++;
-			error_log( "- increment new vote to " . var_export( $score['data']['votes'][ $vote ], true ) );
 		}
 
 		// Get the index for the highest value in our scores array.
 		$score['average'] = array_keys( $score['data']['votes'], max( $score['data']['votes'] ) )[0];
 		$score['value'] = $score['average'];
 
-		error_log( "- average is " . $score['average'] . " in " . var_export( $score['data']['votes'], true ) );
-
-		return $score;
+		return parent::modify_score( $score, $vote, $old_vote, $metric, $context_id );
 	}
 
-	public static function render_options( $options, $name = 'options[%s]' ) {
+	// ===== ADMIN FACING CODE ==== //
+	public function render_options( $options, $name = 'options[%s]' ) {
 		$options = shortcode_atts( array(
 			'question' => "",
 			'answers' => "",
@@ -100,7 +102,7 @@ class Evaluate_Metric_Poll {
 
 		?>
 		<dt>Question</dt>
-		<dd><input type="text" name="<?php printf( $name, 'question' ); ?>" value="<?php echo $options['question']; ?>"></input></dd>
+		<dd><input type="text" name="<?php printf( $name, 'question' ); ?>" value="<?php echo $options['question']; ?>" autocomplete="off"></input></dd>
 		<dt>Answers</dt>
 		<dd>
 			<textarea name="<?php printf( $name, 'answers' ); ?>"><?php echo $options['answers']; ?></textarea>
@@ -112,4 +114,4 @@ class Evaluate_Metric_Poll {
 
 }
 
-Evaluate_Metric_Poll::init();
+Evaluate_Metrics::register_type( new Evaluate_Metric_Poll() );

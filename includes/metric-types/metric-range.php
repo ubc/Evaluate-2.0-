@@ -1,37 +1,47 @@
 <?php
 
-class Evaluate_Metric_Range {
+// TODO: Make this work for fractional votes, or prevent fractional votes.
+class Evaluate_Metric_Range extends Evaluate_Metric_Type {
 
 	const SLUG = 'range';
 
-	public static function init() {
-		Evaluate_Metrics::register_type( "Range", self::SLUG );
-		add_action( 'evaluate_render_metric_' . self::SLUG, array( __CLASS__, 'render_metric' ), 10, 3 );
-		add_filter( 'evaluate_validate_vote_' . self::SLUG, array( __CLASS__, 'validate_vote' ), 10, 2 );
-		add_filter( 'evaluate_adjust_score_' . self::SLUG, array( __CLASS__, 'adjust_score' ), 10, 4 );
-		add_action( 'evaluate_render_options_' . self::SLUG, array( __CLASS__, 'render_options' ), 10, 2 );
+	public function __construct() {
+		parent::__construct( "Range", self::SLUG );
 	}
 
-	public static function render_metric( $options, $score, $metric_id, $user_vote = null ) {
-		if ( $options['icon'] === 'numeric' ) {
-			/*<input type="range" min="0" max="<?php echo $options['max']; ?>"></input>*/
+	// ===== FRONT FACING CODE ==== //
+	public function render_display( $metric, $score, $user_vote = null ) {
+		$metric_id = $metric['metric_id'];
+		$icon = $metric['options']['icon'];
+		$max = $metric['options']['max'];
+		$value = $score['average'];
+
+		if ( $icon === 'slider' ) {
 			?>
-			<input class="metric-input" type="number" min="0" max="<?php echo $options['max']; ?>" placeholder="0" value="<?php echo $user_vote; ?>" data-value="<?php echo $user_vote; ?>"></input> / <?php echo $options['max']; ?> - 
+			<span class="metric-vote">
+				<input class="metric-input" type="range" min="0" step="1" max="<?php echo $max; ?>" value="<?php echo $user_vote; ?>"></input>
+			</span>
+			<?php
+		} else if ( $icon === 'numeric' ) {
+			?>
+			<span class="metric-vote">
+				<input class="metric-input" type="number" min="0" step="1" max="<?php echo $max; ?>" placeholder="0" value="<?php echo $user_vote; ?>"></input> / <?php echo $max; ?> - 
+			</span>
 			<?php
 		} else {
-			self::render_icons( $options['max'], $options['icon'], $metric_id, $user_vote );
+			self::render_icons( $max, $icon, $metric_id, $user_vote );
 		}
 		?>
-		<span class="metric-score"><?php echo $score['average']; ?></span>
+		<span class="metric-score"><?php echo $value; ?></span>
 		<?php
 	}
 
-	public static function render_icons( $i, $icon_slug, $metric_id, $user_vote ) {
+	private static function render_icons( $i, $icon_slug, $metric_id, $user_vote ) {
 		if ( $i > 0 ) {
 			$icon_state = 'up';
 			//$icon_state = ( $i <= $user_vote ) ? 'up' : 'empty';
 			?>
-			<span class="metric-vote metric-vote-<?php echo $i; ?><">
+			<span class="metric-vote metric-vote-<?php echo $i; ?>">
 				<?php self::render_icons( $i - 1, $icon_slug, $metric_id, $user_vote ); ?>
 				<label>
 					<input name="metric-<?php echo $metric_id; ?>" type="radio" value="<?php echo $i; ?>" <?php checked( $user_vote, $i ); ?>></input>
@@ -42,9 +52,13 @@ class Evaluate_Metric_Range {
 		}
 	}
 
-	public static function validate_vote( $vote, $options ) {
+	// ===== VOTE / SCORE HANDLING ==== //
+	public function validate_vote( $vote, $old_vote, $options ) {
+		$vote = parent::validate_vote( $vote, $old_vote, $options );
+
+		// TODO: Prevent fractional votes, if necessary.
 		if ( $vote <= 0 ) {
-			return $options['icon'] == 'numeric' ? 0 : 1;
+			return in_array( $options['icon'], array( 'numeric', 'slider' ) ) ? 0 : 1;
 		} else if ( $vote > $options['max'] ) {
 			return intval( $options['max'] );
 		} else {
@@ -52,19 +66,14 @@ class Evaluate_Metric_Range {
 		}
 	}
 
-	public static function adjust_score( $score, $options, $vote, $old_vote = null ) {
-		error_log( "adjust_score " . var_export( $score, true ) . ",  " . var_export( $vote, true ) . ", " . var_export( $old_vote, true ) );
+	public function modify_score( $score, $vote, $old_vote, $metric, $context_id ) {
 		$vote_diff = $vote - $old_vote;
-		error_log( "- average: " . $score['average'] );
 		$score['average'] = $score['average'] * $score['count'];
-		error_log( "- average: " . $score['average'] );
 
 		if ( $vote !== $old_vote ) {
 			if ( $vote === null ) {
-				error_log("decrement");
 				$score['count']--;
 			} elseif ( $old_vote === null ) {
-				error_log("increment");
 				$score['count']++;
 			}
 		}
@@ -73,13 +82,11 @@ class Evaluate_Metric_Range {
 			$score['average'] = 0;
 			$score['value'] = 0;
 		} else {
-			error_log( "- average: " . $score['average'] . " + " . $vote_diff . " / " . $score['count'] );
 			$score['average'] = ( $score['average'] + $vote_diff ) / $score['count'];
-			$score['value'] = self::calculate_bayesian_score( $score['average'], $score['count'], $options['max'] );
+			$score['value'] = self::calculate_bayesian_score( $score['average'], $score['count'], $metric['options']['max'] );
 		}
-		error_log( "- average: " . $score['average'] );
 
-		return $score;
+		return parent::modify_score( $score, $vote, $old_vote, $metric, $context_id );
 	}
 
 	/**
@@ -91,10 +98,11 @@ class Evaluate_Metric_Range {
 		return round( ( ( $constant * $prior ) + ( $average * $total ) ) / ( $constant + $total ), 5 );
 	}
 
-	public static function render_options( $options, $name = 'options[%s]' ) {
+	// ===== ADMIN FACING CODE ==== //
+	public function render_options( $options, $name = 'options[%s]' ) {
 		$options = shortcode_atts( array(
 			'icon' => 'stars',
-			'max' => 5,
+			'max'  => 5,
 		), $options );
 
 		?>
@@ -131,4 +139,4 @@ class Evaluate_Metric_Range {
 
 }
 
-Evaluate_Metric_Range::init();
+Evaluate_Metrics::register_type( new Evaluate_Metric_Range() );
